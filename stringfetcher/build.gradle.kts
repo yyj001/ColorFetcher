@@ -56,12 +56,11 @@ configurations {
 
 fun download(remoteUrl: String, filePath: String) {
     val startTime = System.currentTimeMillis()
-    URL(remoteUrl).openConnection().let {
-        // todo 可能会有重定向
+    URL(remoteUrl).openConnection().let { connection->
         val fileOutputStream = FileOutputStream(filePath)
-        val bytes = it.getInputStream().readBytes()
+        val bytes = connection.getInputStream().readBytes()
         fileOutputStream.write(bytes)
-        it.getInputStream().close()
+        connection.getInputStream().close()
         val endTime = System.currentTimeMillis()
         println("download finished,cost: ${(endTime - startTime) / 1000f}s, url=$remoteUrl")
     }
@@ -88,6 +87,9 @@ fun unzip(zipPath: String, outPath: String) {
 
 var isFinish = false
 val taskCommand = "string"
+val requestUrl = "http://localhost:9090/strings/download"
+val zipPath = rootProject.rootDir.absolutePath + "/stringfetcher/strings.zip"
+val outPath = rootProject.rootDir.absolutePath + "/stringfetcher/build/generated"
 
 // 添加空task 让./gradlew string命令不会报错
 tasks.register(taskCommand) {
@@ -100,16 +102,13 @@ android.libraryVariants.all {
     if (!isFinish && gradle.startParameter.taskRequests.getOrNull(0) != null) {
         val args = gradle.startParameter.taskRequests.getOrNull(0)?.args ?: arrayListOf()
         println("task startParameter $args")
-        val requestUrl = "http://localhost:9090/strings/download"
-        val jarPath = rootProject.rootDir.absolutePath + "/stringfetcher/strings.zip"
-        val outPath = rootProject.rootDir.absolutePath + "/stringfetcher/build/generated"
         if (args.contains(taskCommand) && !gradle.startParameter.isOffline) {
-            download(requestUrl, jarPath)
+            download(requestUrl, zipPath)
         }
         val outDir = file(outPath)
         outDir.delete()
         outDir.mkdirs()
-        unzip(jarPath, outPath)
+        unzip(zipPath, outPath)
         isFinish = true
     }
 }
